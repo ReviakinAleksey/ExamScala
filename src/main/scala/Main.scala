@@ -37,6 +37,50 @@ object Exam1 {
 
 }
 
+object Exam2Optimized {
+
+  def findSqrtIntOffset(n: Int): (Int, Int, Int) = {
+    LazyList.from(1, 2)
+      .scanLeft(0: Int, n, 1: Int)((current, odd) => {
+        val (sqrtValue, currentN, _) = current
+        (sqrtValue + 1, currentN - odd, odd)
+      })
+      .collectFirst({
+        case (sqrtValue, offsetToSqrt, lastOdd) if offsetToSqrt <= 0 => (sqrtValue, -offsetToSqrt, lastOdd + 2)
+      })
+      .get
+  }
+
+
+  def solution(start: Int, end: Int): Int = {
+    @tailrec
+    def tailedSearch(start: Int, end: Int, depth: Int = 0): Int = {
+      val (firstSqrtValue, offsetToSqrt, nextOdd) = findSqrtIntOffset(start)
+      val firstHasSqrt = start + offsetToSqrt
+
+      val lastHasSqrtOption = LazyList
+        .iterate((firstSqrtValue, firstHasSqrt, nextOdd))({
+          case (sqrt, hasSqrtInt, nextOdd) =>
+            (sqrt + 1, hasSqrtInt + nextOdd, nextOdd + 2)
+        })
+        .takeWhile({
+          case (_, hasSqrtInt, _) =>
+            hasSqrtInt <= end
+        })
+        .lastOption
+
+      lastHasSqrtOption match {
+        case Some((lastHasSqrt, _, _)) =>
+          tailedSearch(firstSqrtValue, lastHasSqrt, depth + 1)
+        case None =>
+          depth
+      }
+    }
+
+    tailedSearch(start, end)
+  }
+}
+
 object Exam2 {
   @tailrec
   def rootDepth(n: Int, currentDepth: Int = 0): Int = {
@@ -94,6 +138,9 @@ object Main extends App {
   println("=======================")
   println("Exam2")
   println(Exam2.solution(6000, 7000))
+  println("=======================")
+  println("Exam2Optimized")
+  println(Exam2Optimized.solution(2, 1_000_000_000))
   println("=======================")
   println("Exam3")
   println(Exam3.solution(243))
