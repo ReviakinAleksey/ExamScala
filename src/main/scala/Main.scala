@@ -39,45 +39,39 @@ object Exam1 {
 
 object Exam2Optimized {
 
-  def findSqrtIntOffset(n: Int): (Int, Int, Int) = {
-    LazyList.from(1, 2)
-      .scanLeft(0: Int, n, 1: Int)((current, odd) => {
-        val (sqrtValue, currentN, _) = current
-        (sqrtValue + 1, currentN - odd, odd)
-      })
+  case class IntSqrt(nearestSqrt: Int, offsetToSqrt: Int, offsetToNextSqrt: Int)
+
+  case class SqrtData(intSqrt: Int, number: Int, offsetToNextSqrt: Int)
+
+  def findSqrtIntOffset(n: Int): IntSqrt = {
+    LazyList
+      .iterate(IntSqrt(0, n, 1))(i => i.copy(i.nearestSqrt + 1, i.offsetToSqrt - i.offsetToNextSqrt, i.offsetToNextSqrt + 2))
       .collectFirst({
-        case (sqrtValue, offsetToSqrt, lastOdd) if offsetToSqrt <= 0 => (sqrtValue, -offsetToSqrt, lastOdd + 2)
+        case IntSqrt(nearestSqrt, offsetToSqrt, offsetToNextSqrt) if offsetToSqrt <= 0 =>
+          IntSqrt(nearestSqrt, -offsetToSqrt, offsetToNextSqrt)
       })
       .get
   }
 
+  @tailrec
+  def findSqrtDepth(n: Int, depth: Int): Int = {
+    Exam2Optimized.findSqrtIntOffset(n) match {
+      case IntSqrt(nextSqrt, 0, _) =>
+        findSqrtDepth(nextSqrt, depth + 1)
+      case IntSqrt(_, _, _) =>
+        depth
+    }
+  }
 
   def solution(start: Int, end: Int): Int = {
-    @tailrec
-    def tailedSearch(start: Int, end: Int, depth: Int = 0): Int = {
-      val (firstSqrtValue, offsetToSqrt, nextOdd) = findSqrtIntOffset(start)
-      val firstHasSqrt = start + offsetToSqrt
+    val IntSqrt(firstSqrtValue, offsetToSqrt, offsetToNextSqrt) = findSqrtIntOffset(start)
+    val firstHasSqrt = start + offsetToSqrt
 
-      val lastHasSqrtOption = LazyList
-        .iterate((firstSqrtValue, firstHasSqrt, nextOdd))({
-          case (sqrt, hasSqrtInt, nextOdd) =>
-            (sqrt + 1, hasSqrtInt + nextOdd, nextOdd + 2)
-        })
-        .takeWhile({
-          case (_, hasSqrtInt, _) =>
-            hasSqrtInt <= end
-        })
-        .lastOption
-
-      lastHasSqrtOption match {
-        case Some((lastHasSqrt, _, _)) =>
-          tailedSearch(firstSqrtValue, lastHasSqrt, depth + 1)
-        case None =>
-          depth
-      }
-    }
-
-    tailedSearch(start, end)
+    val initial = SqrtData(firstSqrtValue, firstHasSqrt, offsetToNextSqrt)
+    LazyList.iterate(initial)(i => i.copy(i.intSqrt + 1, i.number + i.offsetToNextSqrt, i.offsetToNextSqrt + 2))
+      .takeWhile(_.number <= end)
+      .map(data => findSqrtDepth(data.intSqrt, 1))
+      .max
   }
 }
 
